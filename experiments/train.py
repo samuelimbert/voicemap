@@ -8,8 +8,8 @@ from multiprocessing import cpu_count
 import argparse
 from olympic.callbacks import CSVLogger, Evaluate, ReduceLROnPlateau, ModelCheckpoint
 from olympic import fit
-
-from voicemap.datasets import LibriSpeech, SpeakersInTheWild, ClassConcatDataset, SpectrogramDataset, DatasetFolder
+from voicemap.datasets import LibriSpeech, SpeakersInTheWild, ClassConcatDataset, SpectrogramDataset
+from voicemap.datasets.core import DatasetFolder
 from voicemap.models import ResidualClassifier, BaselineClassifier
 from voicemap.utils import whiten, setup_dirs
 from voicemap.eval import VerificationMetrics
@@ -72,7 +72,7 @@ else:
 ###################
 # Create datasets #
 ###################
-librispeech_subsets = ['train-clean-100', 'train-clean-360', 'train-other-500']
+librispeech_subsets = ['train-clean-100', 'train-clean-360']
 unseen_subset = 'dev-clean'
 sitw_unseen = 'eval'
 # librispeech_subsets = ['dev-clean']
@@ -114,8 +114,8 @@ if args.spectrogram:
         ])
         librispeech_unseen = DatasetFolder(DATA_PATH + f'/LibriSpeech.spec/{unseen_subset}/', extensions=['.npy'],
                                            loader=np.load, transform=transform)
-        sitw = DatasetFolder(DATA_PATH + '/sitw.spec/dev/', extensions=['.npy'], loader=np.load, transform=transform)
-        sitw_unseen = DatasetFolder(DATA_PATH + '/sitw.spec/eval/', extensions=['.npy'], loader=np.load, transform=transform)
+        #sitw = DatasetFolder(DATA_PATH + '/sitw.spec/dev/', extensions=['.npy'], loader=np.load, transform=transform)
+        #sitw_unseen = DatasetFolder(DATA_PATH + '/sitw.spec/eval/', extensions=['.npy'], loader=np.load, transform=transform)
         # speaker_ids = reduce(lambda x, y: x + y, [d.classes for d in librispeech])  # + sitw.classes
     else:
         librispeech = SpectrogramDataset(
@@ -130,28 +130,27 @@ if args.spectrogram:
             window_length=args.window_length,
             window_hop=args.window_hop
         )
-        sitw = SpectrogramDataset(
-            SpeakersInTheWild('dev', 'enroll-core', args.n_seconds, args.downsampling, stochastic=True, pad=False),
-            normalisation='global',
-            window_length=args.window_length,
-            window_hop=args.window_hop
-        )
-        sitw_unseen = SpectrogramDataset(
-            SpeakersInTheWild('eval', 'enroll-core', args.n_seconds, args.downsampling, stochastic=True, pad=False),
-            normalisation='global',
-            window_length=args.window_length,
-            window_hop=args.window_hop
-        )
+#         sitw = SpectrogramDataset(
+#             SpeakersInTheWild('dev', 'enroll-core', args.n_seconds, args.downsampling, stochastic=True, pad=False),
+#             normalisation='global',
+#             window_length=args.window_length,
+#             window_hop=args.window_hop
+#         )
+#         sitw_unseen = SpectrogramDataset(
+#             SpeakersInTheWild('eval', 'enroll-core', args.n_seconds, args.downsampling, stochastic=True, pad=False),
+#             normalisation='global',
+#             window_length=args.window_length,
+#             window_hop=args.window_hop
+#         )
         # speaker_ids = librispeech.df['speaker_id'].values.tolist()  # + sitw.df['speaker_id'].values.tolist()
 else:
     librispeech = LibriSpeech(librispeech_subsets, args.n_seconds, args.downsampling, stochastic=True, pad=False)
-    sitw = SpeakersInTheWild('dev', 'enroll-core', args.n_seconds, args.downsampling, stochastic=True, pad=False)
-    sitw_unseen = SpeakersInTheWild('eval', 'enroll-core', args.n_seconds, args.downsampling, stochastic=True, pad=False)
+#     sitw = SpeakersInTheWild('dev', 'enroll-core', args.n_seconds, args.downsampling, stochastic=True, pad=False)
+#     sitw_unseen = SpeakersInTheWild('eval', 'enroll-core', args.n_seconds, args.downsampling, stochastic=True, pad=False)
     librispeech_unseen = LibriSpeech(unseen_subset, args.n_seconds, args.downsampling, stochastic=True, pad=False)
     # speaker_ids = librispeech.df['speaker_id'].values.tolist()  # + sitw.df['speaker_id'].values.tolist()
 
-
-data = ClassConcatDataset([librispeech, sitw])
+data = ClassConcatDataset([librispeech])#, sitw
 # data = librispeech
 num_classes = data.num_classes
 param_dict.update({'num_samples': len(data), 'num_classes': num_classes})
@@ -159,6 +158,7 @@ param_str = '__'.join([f'{k}={str(v)}' for k, v in param_dict.items()])
 print(f'Total no. speakers = {num_classes}')
 
 indices = range(len(data))
+
 train_indices, test_indices, _, _ = train_test_split(
     indices,
     indices,
@@ -227,7 +227,7 @@ callbacks = [
         prefix='train_'
     ),
     Evaluate(val_loader),
-    VerificationMetrics(sitw_unseen, num_pairs=25000, prefix='sitw_eval_'),
+    #VerificationMetrics(sitw_unseen, num_pairs=25000, prefix='sitw_eval_'),
     VerificationMetrics(librispeech_unseen, num_pairs=25000, prefix='librispeech_dev_clean_'),
     ReduceLROnPlateau(monitor='val_loss', patience=5, verbose=True, min_delta=0.25),
     ModelCheckpoint(filepath=PATH + f'/models/{param_str}.pt',
