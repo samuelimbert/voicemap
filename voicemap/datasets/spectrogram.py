@@ -3,7 +3,7 @@ from typing import Union, Callable
 import librosa
 import numpy as np
 from torch.utils.data import Dataset
-
+from .core import AudioDataset
 
 class SpectrogramDataset(Dataset):
     """Wraps a waveform dataset to transform it into a spectrogram dataset.

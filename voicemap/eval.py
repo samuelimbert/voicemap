@@ -9,8 +9,8 @@ import pandas as pd
 from olympic.callbacks import Callback
 from tqdm import tqdm
 
-from voicemap.datasets import PairDataset, collate_pairs
-
+from voicemap.datasets import PairDataset
+from voicemap.datasets.core import collate_pairs
 
 def seg_intersect(a1,a2, b1,b2):
     def perp(a) :
@@ -49,6 +49,8 @@ def unseen_speakers_evaluation(model: nn.Module, dataset: Dataset, num_pairs: in
     loader = DataLoader(unseen_speaker_pairs, batch_size=100, collate_fn=collate_pairs, num_workers=cpu_count(),
                         drop_last=False)
 
+    print(unseen_speaker_pairs.dataset.df)
+    
     distances = []
     labels = []
 
@@ -59,11 +61,12 @@ def unseen_speakers_evaluation(model: nn.Module, dataset: Dataset, num_pairs: in
         with torch.no_grad():
             x_embed = model(x, return_embedding=True)
             y_embed = model(y, return_embedding=True)
-
-            sim = F.cosine_similarity(x_embed, y_embed, dim=1, eps=1e-6)
-            distances += sim.tolist()
+            sim = F.cosine_similarity(x_embed, y_embed, dim=1)
+            simlist = sim.tolist()
+            newlist = [x if (str(x) != 'nan') else 0 for x in simlist]
+            distances += newlist
             labels += label
-
+        
         pbar.update(1)
 
     pbar.close()

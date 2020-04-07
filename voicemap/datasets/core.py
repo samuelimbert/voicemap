@@ -166,6 +166,7 @@ class PairDataset(Dataset):
         else:
             index_1 = np.random.randint(len(self.dataset))
             index_2 = np.random.randint(len(self.dataset))
+            
             x, x_label = self.dataset[index_1]
             y, y_label = self.dataset[index_2]
             label = x_label == y_label
